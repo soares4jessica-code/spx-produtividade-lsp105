@@ -1,12 +1,13 @@
 // =========================================================================
 // CONFIGURAÇÃO DE ATUALIZAÇÃO REMOTA (LSP 105)
 // =========================================================================
-const VERSAO_LOCAL = "1.4";
+const VERSAO_LOCAL = "1.3";
 const URL_CONTROLE_VERSAO = "https://raw.githubusercontent.com/soares4jessica-code/spx-produtividade-lsp105/refs/heads/main/versao.json";
 
-// =========================================================================
-// TURNOS E CONFIGURAÇÕES DO LSP 105
-// =========================================================================
+// Turnos LSP 105:
+// AM: 02:00 às 05:30 -> faixas 02:00, 03:00, 04:00, 05:00
+// PM: 08:00 às 12:00 -> faixas 08:00, 09:00, 10:00, 11:00
+// PM 2: 12:00 às 15:30 -> faixas 12:00, 13:00, 14:00, 15:00
 const INTERVALOS_TURNO = {
   AM: ["02:00", "03:00", "04:00", "05:00"],
   PM: ["08:00", "09:00", "10:00", "11:00"],
@@ -33,7 +34,7 @@ const CONFIG_BANCADAS = [
 
 let turnoSelecionado = "TODOS";
 let horarioSelecionado = "TODOS";
-let dadosBrutosExtraidos = { horasDetectadas: [], registros: [] };
+let dadosBrutosExtraidos = { ths: [], linhas: [] };
 let metaVolumetria = 0;
 let escalaEstacoes = {};
 let mapaTotaisOperadores = {};
@@ -105,9 +106,7 @@ async function verificarAtualizacaoRemota() {
   }
 }
 
-// =========================================================================
-// LEITURA DA TABELA DO SPX (ALINHADA COM A ESTRUTURA REAL DO CONSOLE)
-// =========================================================================
+// MOTOR DE EXTRAÇÃO ORIGINAL RESTAURADO (INALTERADO)
 async function sincronizarTabelaProdutividade() {
   const lblTimer = document.getElementById("lbl-timer");
   if (lblTimer) lblTimer.innerText = "Sincronizando...";
@@ -127,73 +126,32 @@ async function sincronizarTabelaProdutividade() {
     const r = await chrome.scripting.executeScript({
       target: { tabId: spxTab.id },
       func: () => {
-        function extrairDaPagina(doc) {
-          // 1. Pega apenas a primeira linha do thead principal (onde ficam Operator, Evento, Esperado, 16:00, 15:00...)
-          const primeiraLinhaHeader = doc.querySelector(".el-table__header-wrapper thead tr, table thead tr");
-          const ths = primeiraLinhaHeader
-            ? Array.from(primeiraLinhaHeader.querySelectorAll("th")).map(th => (th.innerText || th.textContent || "").trim())
-            : Array.from(doc.querySelectorAll("th")).map(th => (th.innerText || th.textContent || "").trim());
+        function lerDocumento(doc) {
+          // Ignora elementos dentro de colunas congeladas duplicadas (.el-table__fixed)
+          const ths = Array.from(doc.querySelectorAll("table thead th, .el-table__header th, th"))
+            .filter(th => !th.closest(".el-table__fixed") && !th.closest(".el-table__fixed-right"))
+            .map(th => th.innerText.trim());
 
-          // Mapeia índice da coluna -> hora (ex: índice 4 -> "16:00")
-          const mapaIndiceHora = {};
-          const horasEncontradas = [];
-          let idxOperador = 1;
-
-          ths.forEach((texto, idx) => {
-            if (/operator|operador|colaborador/i.test(texto)) {
-              idxOperador = idx;
-            }
-            const matchHora = texto.match(/^(\d{2}:\d{2})/);
-            if (matchHora && matchHora[1]) {
-              mapaIndiceHora[idx] = matchHora[1];
-              if (!horasEncontradas.includes(matchHora[1])) {
-                horasEncontradas.push(matchHora[1]);
-              }
-            }
-          });
-
-          // 2. Procura todas as linhas de dados da tabela principal (ignorando linhas vazias e clones fixos)
-          const todasTrs = Array.from(doc.querySelectorAll(".el-table__body-wrapper tbody tr, table tbody tr"))
+          const trs = Array.from(doc.querySelectorAll("table tbody tr, .el-table__body tr"))
             .filter(tr => !tr.closest(".el-table__fixed") && !tr.closest(".el-table__fixed-right"));
 
-          const registros = [];
+          const linhas = trs.map(tr =>
+            Array.from(tr.querySelectorAll("td")).map(td => td.innerText.trim())
+          ).filter(linha => linha.length > 0);
 
-          todasTrs.forEach(tr => {
-            const tds = Array.from(tr.querySelectorAll("td")).map(td => (td.innerText || td.textContent || "").trim());
-            // Ignora linhas fantasma totalmente vazias
-            if (tds.length === 0 || tds.every(txt => txt === "")) return;
-
-            const nomeOp = tds[idxOperador] || tds.find(t => /\[.*\]|[a-zA-ZÀ-ÿ]{3,}/.test(t)) || "";
-            if (!nomeOp || /total|soma/i.test(nomeOp)) return;
-
-            const valoresPorHora = {};
-            Object.keys(mapaIndiceHora).forEach(colIdx => {
-              const hora = mapaIndiceHora[colIdx];
-              const rawVal = tds[colIdx] || "0";
-              valoresPorHora[hora] = parseInt(rawVal.replace(/\D/g, ""), 10) || 0;
-            });
-
-            registros.push({
-              operador: nomeOp,
-              valoresPorHora
-            });
-          });
-
-          return {
-            horasDetectadas: horasEncontradas,
-            registros
-          };
+          return { ths, linhas };
         }
 
-        let res = extrairDaPagina(document);
+        let res = lerDocumento(document);
 
-        if (!res.registros || res.registros.length === 0) {
-          for (let ifr of document.querySelectorAll("iframe")) {
+        if (!res.linhas || res.linhas.length === 0) {
+          const iframes = document.querySelectorAll("iframe");
+          for (let ifr of iframes) {
             try {
               const subDoc = ifr.contentDocument || ifr.contentWindow.document;
               if (subDoc) {
-                const subRes = extrairDaPagina(subDoc);
-                if (subRes.registros && subRes.registros.length > 0) {
+                const subRes = lerDocumento(subDoc);
+                if (subRes.linhas && subRes.linhas.length > 0) {
                   res = subRes;
                   break;
                 }
@@ -208,14 +166,14 @@ async function sincronizarTabelaProdutividade() {
 
     const resultado = r && r[0] ? r[0].result : null;
 
-    if (resultado && resultado.registros && resultado.registros.length > 0) {
+    if (resultado && resultado.linhas && resultado.linhas.length > 0) {
       dadosBrutosExtraidos = resultado;
       renderizarPainelCompleto();
       if (lblTimer) {
         lblTimer.innerText = `Atualizado às ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
       }
     } else {
-      if (lblTimer) lblTimer.innerText = "⚠️ Tabela sem linhas visíveis (role a tabela no SPX)";
+      if (lblTimer) lblTimer.innerText = "⚠️ Tabela sem dados (recarregue o SPX)";
     }
   } catch (err) {
     console.error("[SPX] Erro ao sincronizar:", err);
@@ -258,15 +216,28 @@ function atualizarBadgeFiltro() {
 }
 
 function renderizarPainelCompleto() {
-  if (!dadosBrutosExtraidos.registros || dadosBrutosExtraidos.registros.length === 0) return;
+  if (!dadosBrutosExtraidos.linhas || dadosBrutosExtraidos.linhas.length === 0) return;
 
-  const horasDetectadas = (dadosBrutosExtraidos.horasDetectadas || []).map(h => ({ hora: h }));
-  const registros = dadosBrutosExtraidos.registros || [];
+  const ths = dadosBrutosExtraidos.ths || [];
+  const linhas = dadosBrutosExtraidos.linhas || [];
 
-  let colunasDoTurno = horasDetectadas;
+  // Extrai cabeçalhos de hora (aceita "08:00" ou "08:00~09:00" sem duplicar)
+  let colunasDetectadas = [];
+  const horasVistas = new Set();
+
+  ths.forEach((cabecalho, index) => {
+    const limpo = cabecalho.replace('~', ' ').trim();
+    const match = limpo.match(/^(\d{2}:\d{2})/);
+    if (match && match[1] && !horasVistas.has(match[1])) {
+      horasVistas.add(match[1]);
+      colunasDetectadas.push({ index, hora: match[1] });
+    }
+  });
+
+  let colunasDoTurno = colunasDetectadas;
   if (turnoSelecionado !== "TODOS" && INTERVALOS_TURNO[turnoSelecionado]) {
     const horasDoTurno = INTERVALOS_TURNO[turnoSelecionado];
-    colunasDoTurno = horasDetectadas.filter(col => horasDoTurno.includes(col.hora));
+    colunasDoTurno = colunasDetectadas.filter(col => horasDoTurno.includes(col.hora));
   }
   colunasDoTurno.sort((a, b) => a.hora.localeCompare(b.hora));
 
@@ -279,12 +250,17 @@ function renderizarPainelCompleto() {
   }
 
   const listaHoras = colunasFiltradas.map(c => c.hora);
+
   const mapaColaboradores = {};
   let totalBipadoPeriodo = 0;
 
-  registros.forEach(reg => {
-    const nome = limparNome(reg.operador);
-    const opsReal = extrairOps(reg.operador);
+  linhas.forEach(linha => {
+    // Padrão original: coluna 1 (ou 0 se não houver índice) contém o nome do operador
+    const operadorBruto = linha[1] || linha[0];
+    if (!operadorBruto || operadorBruto.toLowerCase().includes("total")) return;
+
+    const nome = limparNome(operadorBruto);
+    const opsReal = extrairOps(operadorBruto);
 
     if (!mapaColaboradores[nome]) {
       mapaColaboradores[nome] = {
@@ -296,9 +272,10 @@ function renderizarPainelCompleto() {
       listaHoras.forEach(h => mapaColaboradores[nome].horas[h] = 0);
     }
 
-    listaHoras.forEach(hora => {
-      const qtd = reg.valoresPorHora[hora] || 0;
-      mapaColaboradores[nome].horas[hora] = (mapaColaboradores[nome].horas[hora] || 0) + qtd;
+    colunasFiltradas.forEach(col => {
+      const valorTexto = linha[col.index] || "0";
+      const qtd = parseInt(valorTexto.replace(/\D/g, ''), 10) || 0;
+      mapaColaboradores[nome].horas[col.hora] = (mapaColaboradores[nome].horas[col.hora] || 0) + qtd;
       mapaColaboradores[nome].totalGeral += qtd;
       totalBipadoPeriodo += qtd;
     });
@@ -311,7 +288,10 @@ function renderizarPainelCompleto() {
   listaNomesOperadores.forEach(nome => {
     const op = mapaColaboradores[nome];
     mapaTotaisOperadores[nome] = op.totalGeral;
-    if (op.totalGeral > 0) ranking.push(op);
+
+    if (op.totalGeral > 0) {
+      ranking.push(op);
+    }
   });
 
   ranking.sort((a, b) => b.totalGeral - a.totalGeral);

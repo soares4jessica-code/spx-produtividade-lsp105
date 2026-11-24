@@ -4,21 +4,23 @@
 const VERSAO_LOCAL = "1.4";
 const URL_CONTROLE_VERSAO = "https://raw.githubusercontent.com/soares4jessica-code/spx-produtividade-lsp105/refs/heads/main/versao.json";
 
-// Turnos LSP 105:
-// AM: 02:00 às 07:00 -> faixas 02:00, 03:00, 04:00, 05:00, 06:00, 07:00
-// PM: 08:00 às 12:00 -> faixas 08:00, 09:00, 10:00, 11:00, 12:00
-// PM 2: 12:00 às 16:00 -> faixas 12:00, 13:00, 14:00, 15:00, 16:00
+// =========================================================================
+// TURNOS E CONFIGURAÇÕES DO LSP 105
+// =========================================================================
+// AM: 00:00 às 06:30 -> faixas 00:00, 01:00, 02:00, 03:00, 04:00, 05:00, 06:00
+// PM: 08:00 às 12:00 -> faixas 08:00, 09:00, 10:00, 11:00
+// PM 2: 12:00 às 16:30 -> faixas 12:00, 13:00, 14:00, 15:00, 16:00
 const INTERVALOS_TURNO = {
   AM: ["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00"],
   PM: ["08:00", "09:00", "10:00", "11:00"],
-  PM2: ["12:00", "13:00", "14:00", "15:00"]
+  PM2: ["12:00", "13:00", "14:00", "15:00", "16:00"]
 };
 
 const NOMES_TURNOS = {
   TODOS: "Todos os Horários",
-  AM: "Turno AM (00:00 - 06:30)", 
+  AM: "Turno AM (00:00 - 06:30)",
   PM: "Turno PM (08:00 - 12:00)",
-  PM2: "Turno PM 2 (12:00 - 15:30)"
+  PM2: "Turno PM 2 (12:00 - 16:30)"
 };
 
 const CONFIG_BANCADAS = [
@@ -34,7 +36,7 @@ const CONFIG_BANCADAS = [
 
 let turnoSelecionado = "TODOS";
 let horarioSelecionado = "TODOS";
-let dadosBrutosExtraidos = { ths: [], linhas: [] };
+let dadosBrutosExtraidos = { horasEncontradas: [], registros: [] };
 let metaVolumetria = 0;
 let escalaEstacoes = {};
 let mapaTotaisOperadores = {};
@@ -106,7 +108,9 @@ async function verificarAtualizacaoRemota() {
   }
 }
 
-// MOTOR DE EXTRAÇÃO ORIGINAL RESTAURADO (INALTERADO)
+// =========================================================================
+// LEITURA EXATA POR ID DE COLUNA DO ELEMENT-UI (SPX)
+// =========================================================================
 async function sincronizarTabelaProdutividade() {
   const lblTimer = document.getElementById("lbl-timer");
   if (lblTimer) lblTimer.innerText = "Sincronizando...";
@@ -126,32 +130,74 @@ async function sincronizarTabelaProdutividade() {
     const r = await chrome.scripting.executeScript({
       target: { tabId: spxTab.id },
       func: () => {
-        function lerDocumento(doc) {
-          // Ignora elementos dentro de colunas congeladas duplicadas (.el-table__fixed)
-          const ths = Array.from(doc.querySelectorAll("table thead th, .el-table__header th, th"))
-            .filter(th => !th.closest(".el-table__fixed") && !th.closest(".el-table__fixed-right"))
-            .map(th => th.innerText.trim());
+        function extrairSPX(doc) {
+          // 1. Mapeia cada classe de coluna (ex: "el-table_1_column_8") para a hora ("12:00")
+          const mapaClasseHora = {};
+          const horasEncontradas = [];
 
-          const trs = Array.from(doc.querySelectorAll("table tbody tr, .el-table__body tr"))
+          const ths = Array.from(doc.querySelectorAll(".el-table__header-wrapper th, table thead th"))
+            .filter(th => !th.closest(".el-table__fixed") && !th.closest(".el-table__fixed-right"));
+
+          ths.forEach(th => {
+            const texto = (th.innerText || th.textContent || "").trim();
+            const match = texto.match(/^(\d{2}:\d{2})/);
+            if (match && match[1]) {
+              const hora = match[1];
+              const classeColuna = Array.from(th.classList).find(c => /column_\d+/.test(c));
+              if (classeColuna) {
+                mapaClasseHora[classeColuna] = hora;
+                if (!horasEncontradas.includes(hora)) {
+                  horasEncontradas.push(hora);
+                }
+              }
+            }
+          });
+
+          // 2. Lê cada linha de operador e cruza pela MESMA classe de coluna
+          const trs = Array.from(doc.querySelectorAll(".el-table__body-wrapper tbody tr, table tbody tr"))
             .filter(tr => !tr.closest(".el-table__fixed") && !tr.closest(".el-table__fixed-right"));
 
-          const linhas = trs.map(tr =>
-            Array.from(tr.querySelectorAll("td")).map(td => td.innerText.trim())
-          ).filter(linha => linha.length > 0);
+          const registros = [];
 
-          return { ths, linhas };
+          trs.forEach(tr => {
+            const tds = Array.from(tr.querySelectorAll("td"));
+            if (tds.length === 0) return;
+
+            const textos = tds.map(td => (td.innerText || td.textContent || "").trim());
+            // Pula linha fantasma vazia
+            if (textos.every(t => t === "")) return;
+
+            // Pega o nome do operador (coluna 1 ou a célula que contém [OPS] / nome)
+            const operadorBruto = textos[1] || textos.find(t => /\[.*\]|[a-zA-ZÀ-ÿ]{3,}/.test(t)) || "";
+            if (!operadorBruto || /total/i.test(operadorBruto)) return;
+
+            const valoresPorHora = {};
+            tds.forEach((td, i) => {
+              const classeColuna = Array.from(td.classList).find(c => /column_\d+/.test(c));
+              const hora = classeColuna ? mapaClasseHora[classeColuna] : null;
+              if (hora) {
+                const qtd = parseInt(textos[i].replace(/\D/g, ""), 10) || 0;
+                valoresPorHora[hora] = (valoresPorHora[hora] || 0) + qtd;
+              }
+            });
+
+            registros.push({
+              operador: operadorBruto,
+              valoresPorHora
+            });
+          });
+
+          return { horasEncontradas, registros };
         }
 
-        let res = lerDocumento(document);
-
-        if (!res.linhas || res.linhas.length === 0) {
-          const iframes = document.querySelectorAll("iframe");
-          for (let ifr of iframes) {
+        let res = extrairSPX(document);
+        if (!res.registros || res.registros.length === 0) {
+          for (let ifr of document.querySelectorAll("iframe")) {
             try {
               const subDoc = ifr.contentDocument || ifr.contentWindow.document;
               if (subDoc) {
-                const subRes = lerDocumento(subDoc);
-                if (subRes.linhas && subRes.linhas.length > 0) {
+                const subRes = extrairSPX(subDoc);
+                if (subRes.registros && subRes.registros.length > 0) {
                   res = subRes;
                   break;
                 }
@@ -159,14 +205,13 @@ async function sincronizarTabelaProdutividade() {
             } catch (e) {}
           }
         }
-
         return res;
       }
     });
 
     const resultado = r && r[0] ? r[0].result : null;
 
-    if (resultado && resultado.linhas && resultado.linhas.length > 0) {
+    if (resultado && resultado.registros && resultado.registros.length > 0) {
       dadosBrutosExtraidos = resultado;
       renderizarPainelCompleto();
       if (lblTimer) {
@@ -195,8 +240,8 @@ function atualizarOpcoesSelectHorario(colunasDoTurno) {
   horasDisponiveis.forEach(h => {
     const selected = h === horarioSelecionado ? "selected" : "";
     let labelHora = `Horário: ${h}`;
-    if (turnoSelecionado === "AM" && h === "05:00") labelHora = "Horário: 05:00 (até 05:30)";
-    if (turnoSelecionado === "PM2" && h === "15:00") labelHora = "Horário: 15:00 (até 15:30)";
+    if (turnoSelecionado === "AM" && h === "06:00") labelHora = "Horário: 06:00 (até 06:30)";
+    if (turnoSelecionado === "PM2" && h === "16:00") labelHora = "Horário: 16:00 (até 16:30)";
     htmlOptions += `<option value="${h}" ${selected}>${labelHora}</option>`;
   });
 
@@ -216,28 +261,15 @@ function atualizarBadgeFiltro() {
 }
 
 function renderizarPainelCompleto() {
-  if (!dadosBrutosExtraidos.linhas || dadosBrutosExtraidos.linhas.length === 0) return;
+  if (!dadosBrutosExtraidos.registros || dadosBrutosExtraidos.registros.length === 0) return;
 
-  const ths = dadosBrutosExtraidos.ths || [];
-  const linhas = dadosBrutosExtraidos.linhas || [];
+  const horasDetectadas = (dadosBrutosExtraidos.horasEncontradas || []).map(h => ({ hora: h }));
+  const registros = dadosBrutosExtraidos.registros || [];
 
-  // Extrai cabeçalhos de hora (aceita "08:00" ou "08:00~09:00" sem duplicar)
-  let colunasDetectadas = [];
-  const horasVistas = new Set();
-
-  ths.forEach((cabecalho, index) => {
-    const limpo = cabecalho.replace('~', ' ').trim();
-    const match = limpo.match(/^(\d{2}:\d{2})/);
-    if (match && match[1] && !horasVistas.has(match[1])) {
-      horasVistas.add(match[1]);
-      colunasDetectadas.push({ index, hora: match[1] });
-    }
-  });
-
-  let colunasDoTurno = colunasDetectadas;
+  let colunasDoTurno = horasDetectadas;
   if (turnoSelecionado !== "TODOS" && INTERVALOS_TURNO[turnoSelecionado]) {
     const horasDoTurno = INTERVALOS_TURNO[turnoSelecionado];
-    colunasDoTurno = colunasDetectadas.filter(col => horasDoTurno.includes(col.hora));
+    colunasDoTurno = horasDetectadas.filter(col => horasDoTurno.includes(col.hora));
   }
   colunasDoTurno.sort((a, b) => a.hora.localeCompare(b.hora));
 
@@ -250,17 +282,12 @@ function renderizarPainelCompleto() {
   }
 
   const listaHoras = colunasFiltradas.map(c => c.hora);
-
   const mapaColaboradores = {};
   let totalBipadoPeriodo = 0;
 
-  linhas.forEach(linha => {
-    // Padrão original: coluna 1 (ou 0 se não houver índice) contém o nome do operador
-    const operadorBruto = linha[1] || linha[0];
-    if (!operadorBruto || operadorBruto.toLowerCase().includes("total")) return;
-
-    const nome = limparNome(operadorBruto);
-    const opsReal = extrairOps(operadorBruto);
+  registros.forEach(reg => {
+    const nome = limparNome(reg.operador);
+    const opsReal = extrairOps(reg.operador);
 
     if (!mapaColaboradores[nome]) {
       mapaColaboradores[nome] = {
@@ -272,10 +299,9 @@ function renderizarPainelCompleto() {
       listaHoras.forEach(h => mapaColaboradores[nome].horas[h] = 0);
     }
 
-    colunasFiltradas.forEach(col => {
-      const valorTexto = linha[col.index] || "0";
-      const qtd = parseInt(valorTexto.replace(/\D/g, ''), 10) || 0;
-      mapaColaboradores[nome].horas[col.hora] = (mapaColaboradores[nome].horas[col.hora] || 0) + qtd;
+    listaHoras.forEach(hora => {
+      const qtd = reg.valoresPorHora[hora] || 0;
+      mapaColaboradores[nome].horas[hora] = (mapaColaboradores[nome].horas[hora] || 0) + qtd;
       mapaColaboradores[nome].totalGeral += qtd;
       totalBipadoPeriodo += qtd;
     });
@@ -288,10 +314,7 @@ function renderizarPainelCompleto() {
   listaNomesOperadores.forEach(nome => {
     const op = mapaColaboradores[nome];
     mapaTotaisOperadores[nome] = op.totalGeral;
-
-    if (op.totalGeral > 0) {
-      ranking.push(op);
-    }
+    if (op.totalGeral > 0) ranking.push(op);
   });
 
   ranking.sort((a, b) => b.totalGeral - a.totalGeral);

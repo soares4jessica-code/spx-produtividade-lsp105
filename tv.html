@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Modo TV Operacional - LSP 105</title>
+  <link rel="icon" type="image/png" href="icon.png">
+  <style>
+    :root {
+      --spx-orange: #ee4d2d;
+      --green: #2ea043;
+      --red: #f85149;
+
+      /* Modo Escuro (Padrão TV) */
+      --bg-dark: #0a0d12;
+      --bg-card: #141922;
+      --bg-card-subtle: #1c2330;
+      --text-main: #f0f3f6;
+      --text-muted: #8b949e;
+      --border-color: #2d3644;
+      --ops-muted: #79c0ff;
+      --nome-neon: #00ff66;
+      --nome-shadow: rgba(0, 255, 102, 0.25);
+    }
+
+    body.light-mode {
+      /* Modo Claro */
+      --bg-dark: #f0f2f5;
+      --bg-card: #ffffff;
+      --bg-card-subtle: #f8fafc;
+      --text-main: #1f2328;
+      --text-muted: #656d76;
+      --border-color: #d0d7de;
+      --ops-muted: #0969da;
+      --nome-neon: #009933;
+      --nome-shadow: rgba(0, 153, 51, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      padding: 12px 18px;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: background-color 0.25s, color 0.25s;
+    }
+
+    .tv-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 8px 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      flex-shrink: 0;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon-tv {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+
+    .tv-brand-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-right: 6px;
+    }
+
+    .tv-hub-title {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--text-main);
+      letter-spacing: 0.5px;
+    }
+
+    .tv-dev-top {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--spx-orange);
+      letter-spacing: 0.3px;
+    }
+
+    .tv-tabs-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card-subtle);
+      padding: 4px 8px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    .tab-pill {
+      font-size: 14px;
+      font-weight: 800;
+      padding: 8px 18px;
+      border-radius: 14px;
+      color: var(--text-muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      outline: none;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .tab-pill:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .tab-pill.active {
+      background: var(--spx-orange) !important;
+      color: #ffffff !important;
+      box-shadow: 0 2px 8px rgba(238, 77, 45, 0.45);
+    }
+
+    .tv-right-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .btn-tv-theme {
+      background: var(--bg-card-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 7px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-tv-theme:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: var(--spx-orange);
+    }
+
+    .tv-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .tv-content-container {
+      flex: 1;
+      position: relative;
+      display: flex;
+    }
+
+    .tv-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      opacity: 0;
+      transition: opacity 0.35s ease-in-out;
+    }
+
+    .tv-screen.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .volumetria-hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      flex: 1;
+    }
+
+    .hero-card {
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+
+    .hero-label {
+      font-size: 22px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .hero-value {
+      font-size: 86px;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -1px;
+    }
+
+    .hero-subtext {
+      font-size: 18px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      font-weight: 600;
+    }
+
+    .card-bipado .hero-value { color: var(--nome-neon); }
+    .card-falta .hero-value { color: var(--red); }
+
+    .volumetria-bottom-bar {
+      background: var(--bg-card);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 18px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .bottom-bar-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 24px;
+      font-weight: 800;
+    }
+
+    .progresso-texto {
+      color: var(--spx-orange);
+      font-size: 34px;
+      font-weight: 900;
+    }
+
+    .progress-bar-bg {
+      background: var(--bg-card-subtle);
+      height: 26px;
+      border-radius: 13px;
+      overflow: hidden;
+      border: 1.5px solid var(--border-color);
+    }
+
+    .progress-bar-fill {
+      background: linear-gradient(90deg, #ff7e5f, var(--spx-orange));
+      height: 100%;
+      width: 0%;
+      transition: width 0.6s ease;
+    }
+
+    .top6-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 16px;
+      flex: 1;
+      height: 100%;
+    }
+
+    .top6-card {
+      background: var(--bg-card);
+      border: 3px solid var(--border-color);
+      border-radius: 16px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .top6-card.pos-1 {
+      border-color: #e5a51a;
+      background: linear-gradient(135deg, var(--bg-card) 45%, rgba(229, 165, 26, 0.18));
+    }
+    .top6-card.pos-2 {
+      border-color: #9aa5b5;
+      background: linear-gradient(135deg, var(--bg-card) 45%, rgba(154, 165, 181, 0.16));
+    }
+    .top6-card.pos-3 {
+      border-color: #cd7f32;
+      background: linear-gradient(135deg, var(--bg-card) 45%, rgba(205, 127, 50, 0.16));
+    }
+
+    .pos-medal {
+      font-size: 56px;
+      font-weight: 900;
+      width: 68px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .top6-card-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .top6-header-line {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .top6-nome {
+      font-size: 40px;
+      font-weight: 900;
+      color: var(--nome-neon);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      line-height: 1.05;
+      text-shadow: 0 2px 10px var(--nome-shadow);
+    }
+
+    .top6-ops-micro {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ops-muted);
+      opacity: 0.8;
+      letter-spacing: 0.5px;
+    }
+
+    .top6-bottom-line {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .top6-total-val {
+      font-size: 58px;
+      font-weight: 900;
+      color: var(--spx-orange);
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+
+    .top6-total-pcs {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tv-footer-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .tv-author-tag {
+      font-size: 12px;
+      letter-spacing: 0.4px;
+    }
+
+    .tv-author-tag b {
+      color: var(--spx-orange);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="tv-header">
+    <div class="brand-group">
+      <img src="icon.png" alt="Logo" class="brand-icon-tv">
+      <div class="tv-brand-info">
+        <span class="tv-hub-title">HUB LSP 105</span>
+        <span class="tv-dev-top">Developed by jessica.vsoares</span>
+      </div>
+      <div class="tv-tabs-indicator">
+        <button id="tab-meta" class="tab-pill active" type="button">1. Meta & Saldo</button>
+        <button id="tab-ranking" class="tab-pill" type="button">2. Top 6 Bipagens</button>
+      </div>
+    </div>
+
+    <div class="tv-right-actions">
+      <button id="btn-tv-theme" class="btn-tv-theme" type="button">
+        ☀️ Claro
+      </button>
+      <div class="tv-status">
+        <div class="pulse-dot"></div>
+        <span id="tv-status-txt">Sincronizado</span>
+        <span>•</span>
+        <span id="tv-relogio">--:--:--</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="tv-content-container">
+    <div id="screen-meta" class="tv-screen active">
+      <div class="volumetria-hero-grid">
+        <div class="hero-card card-bipado">
+          <span class="hero-label">📦 Total Bipado no Turno</span>
+          <span class="hero-value" id="tv-bipado">0</span>
+          <span class="hero-subtext">Produção acumulada das bancadas</span>
+        </div>
+
+        <div class="hero-card card-falta">
+          <span class="hero-label">🎯 Saldo Restante a Bipar</span>
+          <span class="hero-value" id="tv-falta">--</span>
+          <span class="hero-subtext">Faltando para bater a meta</span>
+        </div>
+      </div>
+
+      <div class="volumetria-bottom-bar">
+        <div class="bottom-bar-info">
+          <span>Meta Operacional: <b id="tv-meta" style="color: #58a6ff;">0</b> pcs</span>
+          <span>Progresso: <span id="tv-porcentagem" class="progresso-texto">--%</span></span>
+        </div>
+        <div class="progress-bar-bg">
+          <div id="tv-progresso-bar" class="progress-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="screen-ranking" class="tv-screen">
+      <div class="top6-grid" id="container-top6">
+      </div>
+    </div>
+  </div>
+
+  <footer class="tv-footer-bar">
+    <span class="tv-author-tag">Desenvolvido por <b>jessica.vsoares - LSP 105</b></span>
+    <span id="tv-tempo-troca">Próxima troca em: 60s</span>
+  </footer>
+
+  <script src="tv.js"></script>
+</body>
+</html>

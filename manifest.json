@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "SPX - Gestão Operacional & Produtividade (LSP 105)",
+  "version": "1.3",
+  "description": "Painel de gestão à vista e monitoramento de produtividade hora a hora por bancada - LSP 105. Developed by jessica.vsoares.",
+  "author": "jessica.vsoares - LSP 105",
+  "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "action": {
+    "default_title": "Abrir Painel SPX - LSP 105",
+    "default_icon": {
+      "16": "icon.png",
+      "32": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "tabs",
+    "scripting",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.shopee.com/*",
+    "*://*.shopee.com.br/*",
+    "https://raw.githubusercontent.com/*",
+    "https://github.com/*",
+    "<all_urls>"
+  ]
+}

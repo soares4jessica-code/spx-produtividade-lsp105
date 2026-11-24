@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestão Operacional & Bancadas - LSP 105</title>
+  <link rel="icon" type="image/png" href="icon.png">
+  <style>
+    :root {
+      --spx-orange: #ee4d2d;
+      --spx-orange-dark: #d73211;
+      --spx-orange-light: #fff5f2;
+      --green: #00b060;
+      --red: #eb3b5a;
+
+      /* Variáveis de Tema Claro */
+      --bg-body: #f6f8fb;
+      --bg-card: #ffffff;
+      --bg-navbar: #1e2229;
+      --text-main: #2b3445;
+      --text-muted: #7d879c;
+      --border-color: #e3e8ee;
+      --table-header: #f8fafc;
+      --table-alt-row: #fafbfc;
+      --table-hover: #fff8f5;
+      --input-bg: #ffffff;
+      --volumoso-accent: #8e44ad;
+      --volumoso-bg: #fbf5fc;
+      --volumoso-border: #e8d7f1;
+    }
+
+    body.dark-mode {
+      /* Variáveis de Tema Escuro */
+      --bg-body: #0d1117;
+      --bg-card: #161b22;
+      --bg-navbar: #161b22;
+      --text-main: #e6edf3;
+      --text-muted: #8b949e;
+      --border-color: #30363d;
+      --table-header: #21262d;
+      --table-alt-row: #1c2128;
+      --table-hover: #262c36;
+      --input-bg: #0d1117;
+      --spx-orange-light: #3d1a14;
+      --volumoso-accent: #b072d6;
+      --volumoso-bg: #1f1826;
+      --volumoso-border: #442a59;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      padding: 20px 24px 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      transition: background-color 0.25s, color 0.25s;
+    }
+
+    .main-wrapper {
+      flex: 1;
+    }
+
+    .navbar {
+      background: var(--bg-navbar);
+      padding: 14px 24px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+      border: 1px solid var(--border-color);
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      object-fit: cover;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+
+    .brand-title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-title {
+      color: #ffffff;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .hub-badge-top {
+      background: rgba(238, 77, 45, 0.2);
+      border: 1px solid var(--spx-orange);
+      color: #ff8a73;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: #a0a8b5;
+      margin-top: 2px;
+    }
+
+    .dev-credit-top {
+      color: var(--spx-orange);
+      font-weight: 700;
+    }
+
+    .navbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      color: #d1d8e0;
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 0 0 rgba(0, 176, 96, 0.7);
+      animation: pulse 1.6s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(0, 176, 96, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(0, 176, 96, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(0, 176, 96, 0); }
+    }
+
+    .btn-sync {
+      background: var(--spx-orange);
+      color: #ffffff;
+      border: none;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-sync:hover {
+      background: var(--spx-orange-dark);
+      box-shadow: 0 2px 8px rgba(238, 77, 45, 0.4);
+    }
+
+    .btn-tv {
+      background: #227093;
+      color: #ffffff;
+      border: none;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-tv:hover {
+      background: #1b5a75;
+      box-shadow: 0 2px 8px rgba(34, 112, 147, 0.4);
+    }
+
+    .btn-theme {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-theme:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Banner de Atualização */
+    .update-banner {
+      display: none;
+      background: #fff3cd;
+      border: 1.5px solid #ffc107;
+      color: #664d03;
+      padding: 12px 20px;
+      border-radius: 10px;
+      margin-bottom: 18px;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    body.dark-mode .update-banner {
+      background: #332701;
+      border-color: #997404;
+      color: #ffda6a;
+    }
+
+    .update-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .update-file-badge {
+      background: rgba(0, 0, 0, 0.08);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    body.dark-mode .update-file-badge {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .update-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-download-update {
+      background: var(--spx-orange);
+      color: #ffffff;
+      text-decoration: none;
+      padding: 7px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .btn-download-update:hover {
+      background: var(--spx-orange-dark);
+    }
+
+    .btn-dismiss-update {
+      background: transparent;
+      border: 1px solid currentColor;
+      color: inherit;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      opacity: 0.8;
+    }
+
+    .btn-dismiss-update:hover {
+      opacity: 1;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 330px 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 10px;
+      padding: 18px 20px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.6px;
+      margin-bottom: 10px;
+    }
+
+    .turnos-segmented {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .btn-turno {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-body);
+      border: 1.5px solid var(--border-color);
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-turno:hover {
+      border-color: #cbd5e1;
+    }
+
+    .btn-turno.ativo {
+      background: var(--spx-orange-light);
+      border-color: var(--spx-orange);
+      color: var(--spx-orange);
+    }
+
+    .turno-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .btn-turno.ativo .turno-desc {
+      color: var(--spx-orange);
+      font-weight: 700;
+    }
+
+    .filtro-horario-box {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .filtro-horario-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      letter-spacing: 0.5px;
+    }
+
+    .select-horario {
+      width: 100%;
+      padding: 8px 10px;
+      background: var(--input-bg);
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .select-horario:focus {
+      border-color: var(--spx-orange);
+    }
+
+    .kpi-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .kpi-box {
+      background: var(--bg-body);
+      border: 1px solid var(--border-color);
+      padding: 14px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .kpi-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .kpi-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .kpi-subtext {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .kpi-box.bipado .kpi-value { color: var(--green); }
+    .kpi-box.restante .kpi-value { color: var(--red); }
+    .kpi-box.progresso .kpi-value { color: var(--spx-orange); }
+
+    .inputs-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+      background: var(--bg-body);
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .input-field-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .input-field-group label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .input-field-group input {
+      width: 140px;
+      padding: 6px 10px;
+      background: var(--input-bg);
+      border: 1.5px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      outline: none;
+    }
+
+    .input-field-group input:focus {
+      border-color: var(--spx-orange);
+    }
+
+    .badge-filtro-ativo {
+      font-size: 11px;
+      font-weight: 700;
+      background: var(--spx-orange-light);
+      color: var(--spx-orange);
+      border: 1px solid var(--spx-orange);
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .progress-bar-bg {
+      background: var(--bg-body);
+      height: 12px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+    }
+
+    .progress-bar-fill {
+      background: linear-gradient(90deg, #ff7e5f, var(--spx-orange));
+      height: 100%;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .table-card {
+      background: var(--bg-card);
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .table-header-title {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .table-header-title span {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .table-responsive {
+      max-height: 520px;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    thead th {
+      background: var(--table-header);
+      color: var(--text-muted);
+      font-weight: 700;
+      padding: 12px 10px;
+      border-bottom: 1.5px solid var(--border-color);
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    tbody td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+      color: var(--text-main);
+    }
+
+    tbody tr:nth-child(even) {
+      background: var(--table-alt-row);
+    }
+
+    tbody tr:hover {
+      background: var(--table-hover);
+    }
+
+    .pos-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .pos-1 { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+    .pos-2 { background: #e2e8f0; color: #475569; border: 1px solid #cbd5e1; }
+    .pos-3 { background: #fed7aa; color: #9a3412; border: 1px solid #ffedd5; }
+    .pos-default { color: var(--text-muted); font-weight: 600; }
+
+    .col-colaborador {
+      text-align: left;
+      font-weight: 600;
+      padding-left: 18px;
+      color: var(--text-main);
+    }
+
+    .col-total {
+      font-weight: 800;
+      color: var(--spx-orange);
+      font-size: 14px;
+      background: var(--spx-orange-light);
+    }
+
+    .bancadas-section {
+      background: var(--bg-card);
+      border-radius: 10px;
+      padding: 20px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-badge {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--bg-body);
+      border: 1px solid var(--border-color);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+
+    .grid-bancadas {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .bancada-card {
+      background: var(--bg-body);
+      border: 1.5px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      transition: all 0.2s;
+    }
+
+    .bancada-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border-color: #cbd5e1;
+    }
+
+    .bancada-card.volumoso {
+      background: var(--volumoso-bg);
+      border-color: var(--volumoso-border);
+    }
+
+    .bancada-card.volumoso .bancada-topo-nome {
+      color: var(--volumoso-accent);
+    }
+
+    .bancada-topo {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--border-color);
+    }
+
+    .bancada-topo-nome {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--text-main);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .bancada-total-badge {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 800;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .bancada-card.volumoso .bancada-total-badge {
+      background: var(--bg-card);
+      border-color: var(--volumoso-border);
+      color: var(--volumoso-accent);
+    }
+
+    .estacao-bloco {
+      margin-bottom: 10px;
+    }
+
+    .estacao-bloco:last-child {
+      margin-bottom: 0;
+    }
+
+    .estacao-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .estacao-valor {
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .select-operador {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--input-bg);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-main);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .select-operador:focus {
+      border-color: var(--spx-orange);
+    }
+
+    /* Rodapé Executivo */
+    .dashboard-footer {
+      margin-top: 30px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .author-credit {
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+
+    .author-highlight {
+      color: var(--spx-orange);
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="main-wrapper">
+    <!-- Topo com LSP 105 -->
+    <header class="navbar">
+      <div class="brand">
+        <img src="icon.png" alt="Logo" class="brand-icon">
+        <div>
+          <div class="brand-title-row">
+            <span class="brand-title">Gestão Operacional de Produtividade</span>
+            <span class="hub-badge-top">LSP 105</span>
+          </div>
+          <div class="brand-subtitle">
+            Monitoramento de Bancadas e Ranking Hora a Hora • <span class="dev-credit-top">Developed by jessica.vsoares</span>
+          </div>
+        </div>
+      </div>
+      <div class="navbar-actions">
+        <div class="status-badge">
+          <div class="pulse-dot"></div>
+          <span id="lbl-timer">Conectando ao SPX...</span>
+        </div>
+        <div class="status-badge" style="background: rgba(255, 255, 255, 0.04);">
+          ⏱️ <span id="lbl-proxima-hora">Próximo corte: --:05</span>
+        </div>
+        <button id="btn-toggle-theme" class="btn-theme" title="Alternar Modo Claro / Escuro">
+          🌙 Escuro
+        </button>
+        <button id="btn-abrir-tv" class="btn-tv">
+          📺 Modo TV
+        </button>
+        <button id="btn-atualizar-agora" class="btn-sync">
+          🔄 Sincronizar
+        </button>
+      </div>
+    </header>
+
+    <!-- Banner de Atualização Remota -->
+    <div id="banner-atualizacao" class="update-banner">
+      <div class="update-info">
+        <span style="font-size: 20px;">🔔</span>
+        <div>
+          <strong>Atualização disponível (<span id="upd-versao">v1.4</span>):</strong>
+          <span id="upd-descricao">Nova melhoria operacional disponível</span> —
+          Substitua o arquivo: <span id="upd-arquivo" class="update-file-badge">dashboard.js</span>
+        </div>
+      </div>
+      <div class="update-actions">
+        <a id="btn-baixar-update" href="#" download class="btn-download-update">
+          ⬇️ Baixar Arquivo
+        </a>
+        <button id="btn-fechar-update" class="btn-dismiss-update" type="button">
+          Fechar
+        </button>
+      </div>
+    </div>
+
+    <!-- Painel de Turnos, Horário & KPIs -->
+    <div class="dashboard-grid">
+      <div class="card">
+        <div>
+          <div class="card-title">Filtro Operacional de Turno</div>
+          <div class="turnos-segmented">
+            <button class="btn-turno ativo" data-turno="TODOS">
+              <span>Todos os Horários</span>
+              <span class="turno-desc">Visão Geral</span>
+            </button>
+            <button class="btn-turno" data-turno="AM">
+              <span>Turno AM</span>
+              <span class="turno-desc">02:00 às 05:30</span>
+            </button>
+            <button class="btn-turno" data-turno="PM">
+              <span>Turno PM</span>
+              <span class="turno-desc">08:00 às 12:00</span>
+            </button>
+            <button class="btn-turno" data-turno="PM2">
+              <span>Turno PM 2</span>
+              <span class="turno-desc">12:00 às 15:30</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="filtro-horario-box">
+          <label for="select-horario" class="filtro-horario-label">🕒 Filtrar por Horário Específico</label>
+          <select id="select-horario" class="select-horario">
+            <option value="TODOS">Todos os horários do turno</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div>
+          <div class="card-title">Acompanhamento de Meta & Volumetria</div>
+          
+          <div class="kpi-container">
+            <div class="kpi-box bipado">
+              <span class="kpi-label">Total Bipado</span>
+              <span class="kpi-value" id="val-bipado">0</span>
+              <span class="kpi-subtext">Produção acumulada</span>
+            </div>
+
+            <div class="kpi-box restante">
+              <span class="kpi-label">Saldo a Bipar</span>
+              <span class="kpi-value" id="val-falta">--</span>
+              <span class="kpi-subtext">Para atingir a meta</span>
+            </div>
+
+            <div class="kpi-box progresso">
+              <span class="kpi-label">Progresso da Meta</span>
+              <span class="kpi-value" id="val-porcentagem">0%</span>
+              <span class="kpi-subtext">Meta: <b id="val-meta-kpi">0</b></span>
+            </div>
+          </div>
+
+          <div class="inputs-row">
+            <div class="input-field-group">
+              <label for="input-meta">🎯 Meta do Turno:</label>
+              <input type="number" id="input-meta" placeholder="Ex: 15000" min="0">
+            </div>
+            <span id="badge-resumo-filtro" class="badge-filtro-ativo">Exibindo: Todos os Horários</span>
+          </div>
+        </div>
+
+        <div class="progress-bar-bg">
+          <div id="progress-bar-fill" class="progress-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela de Ranking Geral -->
+    <div class="table-card">
+      <div class="table-header-title">
+        <span>Ranking de Desempenho Individual (Apenas Bipagens Ativas > 0)</span>
+        <small style="color: var(--text-muted); font-size: 12px;">Ordenado por maior volume bipado</small>
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr id="header-colunas">
+              <th style="width: 60px;">Posição</th>
+              <th class="col-colaborador">Colaborador</th>
+              <th class="col-total">Total do Período</th>
+            </tr>
+          </thead>
+          <tbody id="linhas-tabela">
+            <tr>
+              <td colspan="3" style="padding: 40px; color: var(--text-muted);">
+                Sincronizando dados com a aba de Produtividade do SPX...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bancadas e Estações de Trabalho -->
+    <div class="bancadas-section">
+      <div class="section-header">
+        <div class="section-title">
+          🏭 Bancadas Operacionais & Estações de Trabalho
+        </div>
+        <span class="section-badge">6 Bancadas Regulares + 2 Bancadas Volumosos</span>
+      </div>
+
+      <div class="grid-bancadas" id="container-bancadas">
+      </div>
+    </div>
+  </div>
+
+  <!-- Rodapé -->
+  <footer class="dashboard-footer">
+    <span>Gestão de Produtividade • Monitoramento em Tempo Real (LSP 105)</span>
+    <span class="author-credit">Desenvolvido por <span class="author-highlight">jessica.vsoares - LSP 105</span></span>
+  </footer>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

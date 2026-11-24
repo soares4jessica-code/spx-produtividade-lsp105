@@ -1,8 +1,8 @@
 // =========================================================================
-// CONFIGURAÇÃO DE ATUALIZAÇÃO REMOTA (COLOQUE O LINK DO SEU GITHUB AQUI)
+// CONFIGURAÇÃO DE ATUALIZAÇÃO REMOTA (LSP 105)
 // =========================================================================
 const VERSAO_LOCAL = "1.3";
-const URL_CONTROLE_VERSAO = "https://raw.githubusercontent.com/SEU-USUARIO/SEU-REPOSITORIO/main/versao.json";
+const URL_CONTROLE_VERSAO = "https://raw.githubusercontent.com/soares4jessica-code/spx-produtividade-lsp105/refs/heads/main/versao.json";
 
 // =========================================================================
 // TURNOS E CONFIGURAÇÕES DO LSP 105
@@ -79,8 +79,6 @@ function alternarTema() {
 // VERIFICADOR DE ATUALIZAÇÃO NO GITHUB
 // =========================================================================
 async function verificarAtualizacaoRemota() {
-  if (!URL_CONTROLE_VERSAO || URL_CONTROLE_VERSAO.includes("SEU-USUARIO")) return;
-
   try {
     const resposta = await fetch(`${URL_CONTROLE_VERSAO}?t=${Date.now()}`);
     if (!resposta.ok) return;
@@ -100,7 +98,7 @@ async function verificarAtualizacaoRemota() {
 
       if (btnBaixar && info.url_download) {
         btnBaixar.href = info.url_download;
-        btnBaixar.setAttribute("download", info.arquivo || "atualizacao.js");
+        btnBaixar.setAttribute("download", info.arquivo || "dashboard.js");
       }
 
       if (banner) banner.style.display = "flex";

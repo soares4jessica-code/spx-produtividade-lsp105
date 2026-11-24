@@ -1,7 +1,7 @@
 // =========================================================================
 // CONFIGURAÇÃO DE ATUALIZAÇÃO REMOTA (LSP 105)
 // =========================================================================
-const VERSAO_LOCAL = "1.5";
+const VERSAO_LOCAL = "1.3";
 const URL_CONTROLE_VERSAO = "https://raw.githubusercontent.com/soares4jessica-code/spx-produtividade-lsp105/refs/heads/main/versao.json";
 
 // =========================================================================

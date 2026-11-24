@@ -33,7 +33,7 @@ const CONFIG_BANCADAS = [
 
 let turnoSelecionado = "TODOS";
 let horarioSelecionado = "TODOS";
-let dadosBrutosExtraidos = { ths: [], linhas: [] };
+let dadosBrutosExtraidos = { horasDetectadas: [], registros: [] };
 let metaVolumetria = 0;
 let escalaEstacoes = {};
 let mapaTotaisOperadores = {};
@@ -106,7 +106,7 @@ async function verificarAtualizacaoRemota() {
 }
 
 // =========================================================================
-// LEITURA DA TABELA DO SPX
+// LEITURA DA TABELA DO SPX (ALINHADA COM A ESTRUTURA REAL DO CONSOLE)
 // =========================================================================
 async function sincronizarTabelaProdutividade() {
   const lblTimer = document.getElementById("lbl-timer");
@@ -127,32 +127,73 @@ async function sincronizarTabelaProdutividade() {
     const r = await chrome.scripting.executeScript({
       target: { tabId: spxTab.id },
       func: () => {
-        function lerDocumento(doc) {
-          // Captura os cabeçalhos da tabela principal (ignorando clones fixos ocultos)
-          const ths = Array.from(doc.querySelectorAll(".el-table__header-wrapper th, table thead th"))
-            .filter(th => !th.classList.contains("gutter"))
-            .map(th => (th.innerText || th.textContent || "").trim());
+        function extrairDaPagina(doc) {
+          // 1. Pega apenas a primeira linha do thead principal (onde ficam Operator, Evento, Esperado, 16:00, 15:00...)
+          const primeiraLinhaHeader = doc.querySelector(".el-table__header-wrapper thead tr, table thead tr");
+          const ths = primeiraLinhaHeader
+            ? Array.from(primeiraLinhaHeader.querySelectorAll("th")).map(th => (th.innerText || th.textContent || "").trim())
+            : Array.from(doc.querySelectorAll("th")).map(th => (th.innerText || th.textContent || "").trim());
 
-          const trs = Array.from(doc.querySelectorAll(".el-table__body-wrapper tbody tr, table tbody tr"))
+          // Mapeia índice da coluna -> hora (ex: índice 4 -> "16:00")
+          const mapaIndiceHora = {};
+          const horasEncontradas = [];
+          let idxOperador = 1;
+
+          ths.forEach((texto, idx) => {
+            if (/operator|operador|colaborador/i.test(texto)) {
+              idxOperador = idx;
+            }
+            const matchHora = texto.match(/^(\d{2}:\d{2})/);
+            if (matchHora && matchHora[1]) {
+              mapaIndiceHora[idx] = matchHora[1];
+              if (!horasEncontradas.includes(matchHora[1])) {
+                horasEncontradas.push(matchHora[1]);
+              }
+            }
+          });
+
+          // 2. Procura todas as linhas de dados da tabela principal (ignorando linhas vazias e clones fixos)
+          const todasTrs = Array.from(doc.querySelectorAll(".el-table__body-wrapper tbody tr, table tbody tr"))
             .filter(tr => !tr.closest(".el-table__fixed") && !tr.closest(".el-table__fixed-right"));
 
-          const linhas = trs.map(tr =>
-            Array.from(tr.querySelectorAll("td")).map(td => (td.innerText || td.textContent || "").trim())
-          ).filter(linha => linha.length > 0);
+          const registros = [];
 
-          return { ths, linhas };
+          todasTrs.forEach(tr => {
+            const tds = Array.from(tr.querySelectorAll("td")).map(td => (td.innerText || td.textContent || "").trim());
+            // Ignora linhas fantasma totalmente vazias
+            if (tds.length === 0 || tds.every(txt => txt === "")) return;
+
+            const nomeOp = tds[idxOperador] || tds.find(t => /\[.*\]|[a-zA-ZÀ-ÿ]{3,}/.test(t)) || "";
+            if (!nomeOp || /total|soma/i.test(nomeOp)) return;
+
+            const valoresPorHora = {};
+            Object.keys(mapaIndiceHora).forEach(colIdx => {
+              const hora = mapaIndiceHora[colIdx];
+              const rawVal = tds[colIdx] || "0";
+              valoresPorHora[hora] = parseInt(rawVal.replace(/\D/g, ""), 10) || 0;
+            });
+
+            registros.push({
+              operador: nomeOp,
+              valoresPorHora
+            });
+          });
+
+          return {
+            horasDetectadas: horasEncontradas,
+            registros
+          };
         }
 
-        let res = lerDocumento(document);
+        let res = extrairDaPagina(document);
 
-        if (!res.linhas || res.linhas.length === 0) {
-          const iframes = document.querySelectorAll("iframe");
-          for (let ifr of iframes) {
+        if (!res.registros || res.registros.length === 0) {
+          for (let ifr of document.querySelectorAll("iframe")) {
             try {
               const subDoc = ifr.contentDocument || ifr.contentWindow.document;
               if (subDoc) {
-                const subRes = lerDocumento(subDoc);
-                if (subRes.linhas && subRes.linhas.length > 0) {
+                const subRes = extrairDaPagina(subDoc);
+                if (subRes.registros && subRes.registros.length > 0) {
                   res = subRes;
                   break;
                 }
@@ -167,14 +208,14 @@ async function sincronizarTabelaProdutividade() {
 
     const resultado = r && r[0] ? r[0].result : null;
 
-    if (resultado && resultado.linhas && resultado.linhas.length > 0) {
+    if (resultado && resultado.registros && resultado.registros.length > 0) {
       dadosBrutosExtraidos = resultado;
       renderizarPainelCompleto();
       if (lblTimer) {
         lblTimer.innerText = `Atualizado às ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
       }
     } else {
-      if (lblTimer) lblTimer.innerText = "⚠️ Tabela sem dados (recarregue o SPX)";
+      if (lblTimer) lblTimer.innerText = "⚠️ Tabela sem linhas visíveis (role a tabela no SPX)";
     }
   } catch (err) {
     console.error("[SPX] Erro ao sincronizar:", err);
@@ -217,27 +258,15 @@ function atualizarBadgeFiltro() {
 }
 
 function renderizarPainelCompleto() {
-  if (!dadosBrutosExtraidos.linhas || dadosBrutosExtraidos.linhas.length === 0) return;
+  if (!dadosBrutosExtraidos.registros || dadosBrutosExtraidos.registros.length === 0) return;
 
-  const ths = dadosBrutosExtraidos.ths || [];
-  const linhas = dadosBrutosExtraidos.linhas || [];
+  const horasDetectadas = (dadosBrutosExtraidos.horasDetectadas || []).map(h => ({ hora: h }));
+  const registros = dadosBrutosExtraidos.registros || [];
 
-  // Procura HH:MM em qualquer lugar do cabeçalho (aceita "12:00", "12:00~13:00", "24/11 12:00", etc.)
-  let colunasDetectadas = [];
-  const horasVistas = new Set();
-
-  ths.forEach((cabecalho, index) => {
-    const match = cabecalho.match(/(\d{2}:\d{2})/);
-    if (match && match[1] && !horasVistas.has(match[1])) {
-      horasVistas.add(match[1]);
-      colunasDetectadas.push({ index, hora: match[1] });
-    }
-  });
-
-  let colunasDoTurno = colunasDetectadas;
+  let colunasDoTurno = horasDetectadas;
   if (turnoSelecionado !== "TODOS" && INTERVALOS_TURNO[turnoSelecionado]) {
     const horasDoTurno = INTERVALOS_TURNO[turnoSelecionado];
-    colunasDoTurno = colunasDetectadas.filter(col => horasDoTurno.includes(col.hora));
+    colunasDoTurno = horasDetectadas.filter(col => horasDoTurno.includes(col.hora));
   }
   colunasDoTurno.sort((a, b) => a.hora.localeCompare(b.hora));
 
@@ -250,17 +279,12 @@ function renderizarPainelCompleto() {
   }
 
   const listaHoras = colunasFiltradas.map(c => c.hora);
-
   const mapaColaboradores = {};
   let totalBipadoPeriodo = 0;
 
-  linhas.forEach(linha => {
-    // Procura a célula que contém o nome/OPS do operador (evita pegar coluna de número de linha)
-    let operadorBruto = linha.find(cel => /\[.*\]|[a-zA-ZÀ-ÿ]{3,}/.test(cel)) || linha[1] || linha[0];
-    if (!operadorBruto || /total|soma/i.test(operadorBruto)) return;
-
-    const nome = limparNome(operadorBruto);
-    const opsReal = extrairOps(operadorBruto);
+  registros.forEach(reg => {
+    const nome = limparNome(reg.operador);
+    const opsReal = extrairOps(reg.operador);
 
     if (!mapaColaboradores[nome]) {
       mapaColaboradores[nome] = {
@@ -272,10 +296,9 @@ function renderizarPainelCompleto() {
       listaHoras.forEach(h => mapaColaboradores[nome].horas[h] = 0);
     }
 
-    colunasFiltradas.forEach(col => {
-      const valorTexto = linha[col.index] || "0";
-      const qtd = parseInt(valorTexto.replace(/\D/g, ''), 10) || 0;
-      mapaColaboradores[nome].horas[col.hora] = (mapaColaboradores[nome].horas[col.hora] || 0) + qtd;
+    listaHoras.forEach(hora => {
+      const qtd = reg.valoresPorHora[hora] || 0;
+      mapaColaboradores[nome].horas[hora] = (mapaColaboradores[nome].horas[hora] || 0) + qtd;
       mapaColaboradores[nome].totalGeral += qtd;
       totalBipadoPeriodo += qtd;
     });
@@ -288,10 +311,7 @@ function renderizarPainelCompleto() {
   listaNomesOperadores.forEach(nome => {
     const op = mapaColaboradores[nome];
     mapaTotaisOperadores[nome] = op.totalGeral;
-
-    if (op.totalGeral > 0) {
-      ranking.push(op);
-    }
+    if (op.totalGeral > 0) ranking.push(op);
   });
 
   ranking.sort((a, b) => b.totalGeral - a.totalGeral);

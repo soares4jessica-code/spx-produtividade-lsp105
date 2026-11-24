@@ -1,15 +1,12 @@
 // =========================================================================
 // CONFIGURAÇÃO DE ATUALIZAÇÃO REMOTA (LSP 105)
 // =========================================================================
-const VERSAO_LOCAL = "1.3";
+const VERSAO_LOCAL = "1.4";
 const URL_CONTROLE_VERSAO = "https://raw.githubusercontent.com/soares4jessica-code/spx-produtividade-lsp105/refs/heads/main/versao.json";
 
 // =========================================================================
 // TURNOS E CONFIGURAÇÕES DO LSP 105
 // =========================================================================
-// AM: 02:00 às 05:30 -> faixas 02:00, 03:00, 04:00, 05:00
-// PM: 08:00 às 12:00 -> faixas 08:00, 09:00, 10:00, 11:00
-// PM 2: 12:00 às 15:30 -> faixas 12:00, 13:00, 14:00, 15:00
 const INTERVALOS_TURNO = {
   AM: ["02:00", "03:00", "04:00", "05:00"],
   PM: ["08:00", "09:00", "10:00", "11:00"],
@@ -131,15 +128,16 @@ async function sincronizarTabelaProdutividade() {
       target: { tabId: spxTab.id },
       func: () => {
         function lerDocumento(doc) {
-          const ths = Array.from(doc.querySelectorAll("table thead th, .el-table__header th, th"))
-            .filter(th => !th.closest(".el-table__fixed") && !th.closest(".el-table__fixed-right"))
-            .map(th => th.innerText.trim());
+          // Captura os cabeçalhos da tabela principal (ignorando clones fixos ocultos)
+          const ths = Array.from(doc.querySelectorAll(".el-table__header-wrapper th, table thead th"))
+            .filter(th => !th.classList.contains("gutter"))
+            .map(th => (th.innerText || th.textContent || "").trim());
 
-          const trs = Array.from(doc.querySelectorAll("table tbody tr, .el-table__body tr"))
+          const trs = Array.from(doc.querySelectorAll(".el-table__body-wrapper tbody tr, table tbody tr"))
             .filter(tr => !tr.closest(".el-table__fixed") && !tr.closest(".el-table__fixed-right"));
 
           const linhas = trs.map(tr =>
-            Array.from(tr.querySelectorAll("td")).map(td => td.innerText.trim())
+            Array.from(tr.querySelectorAll("td")).map(td => (td.innerText || td.textContent || "").trim())
           ).filter(linha => linha.length > 0);
 
           return { ths, linhas };
@@ -224,12 +222,12 @@ function renderizarPainelCompleto() {
   const ths = dadosBrutosExtraidos.ths || [];
   const linhas = dadosBrutosExtraidos.linhas || [];
 
+  // Procura HH:MM em qualquer lugar do cabeçalho (aceita "12:00", "12:00~13:00", "24/11 12:00", etc.)
   let colunasDetectadas = [];
   const horasVistas = new Set();
 
   ths.forEach((cabecalho, index) => {
-    const limpo = cabecalho.replace('~', ' ').trim();
-    const match = limpo.match(/^(\d{2}:\d{2})/);
+    const match = cabecalho.match(/(\d{2}:\d{2})/);
     if (match && match[1] && !horasVistas.has(match[1])) {
       horasVistas.add(match[1]);
       colunasDetectadas.push({ index, hora: match[1] });
@@ -257,8 +255,9 @@ function renderizarPainelCompleto() {
   let totalBipadoPeriodo = 0;
 
   linhas.forEach(linha => {
-    const operadorBruto = linha[1] || linha[0];
-    if (!operadorBruto || operadorBruto.toLowerCase().includes("total")) return;
+    // Procura a célula que contém o nome/OPS do operador (evita pegar coluna de número de linha)
+    let operadorBruto = linha.find(cel => /\[.*\]|[a-zA-ZÀ-ÿ]{3,}/.test(cel)) || linha[1] || linha[0];
+    if (!operadorBruto || /total|soma/i.test(operadorBruto)) return;
 
     const nome = limparNome(operadorBruto);
     const opsReal = extrairOps(operadorBruto);

@@ -5,18 +5,18 @@ const VERSAO_LOCAL = "1.3";
 const URL_CONTROLE_VERSAO = "https://raw.githubusercontent.com/soares4jessica-code/spx-produtividade-lsp105/refs/heads/main/versao.json";
 
 // Turnos LSP 105:
-// AM: 02:00 às 05:30 -> faixas 02:00, 03:00, 04:00, 05:00
-// PM: 08:00 às 12:00 -> faixas 08:00, 09:00, 10:00, 11:00
-// PM 2: 12:00 às 15:30 -> faixas 12:00, 13:00, 14:00, 15:00
+// AM: 02:00 às 07:00 -> faixas 02:00, 03:00, 04:00, 05:00, 06:00, 07:00
+// PM: 08:00 às 12:00 -> faixas 08:00, 09:00, 10:00, 11:00, 12:00
+// PM 2: 12:00 às 16:00 -> faixas 12:00, 13:00, 14:00, 15:00, 16:00
 const INTERVALOS_TURNO = {
-  AM: ["02:00", "03:00", "04:00", "05:00"],
+  AM: ["00:00", "01:00", "02:00", "03:00", "04:00", "05:00", "06:00"],
   PM: ["08:00", "09:00", "10:00", "11:00"],
   PM2: ["12:00", "13:00", "14:00", "15:00"]
 };
 
 const NOMES_TURNOS = {
   TODOS: "Todos os Horários",
-  AM: "Turno AM (02:00 - 05:30)",
+  AM: "Turno AM (00:00 - 06:30)", 
   PM: "Turno PM (08:00 - 12:00)",
   PM2: "Turno PM 2 (12:00 - 15:30)"
 };
